@@ -38,9 +38,10 @@ const SUFFIXE_STYLE: Record<StyleCanvas, string> = {
     ", detailed polished digital illustration, clean composition",
 };
 
-// Suffixe pour les styles sketch (rendu « sketch »).
+// Suffixe pour les styles sketch (rendu « sketch »). Pas de mention « noir et
+// blanc » ici : la coloration est pilotée par le suffixe couleur (params.couleur).
 const SUFFIXE_SKETCH: Record<StyleSketch, string> = {
-  classic: ", hand-drawn pencil sketch style, black and white line art, white background",
+  classic: ", hand-drawn sketch style, clean line art, white background",
   improved: ", refined ink sketch style, clean line art, white background",
   advanced: ", detailed ink illustration, fine hatching, white background",
   creative: ", creative expressive sketch, dynamic hand-drawn lines, white background",
@@ -71,7 +72,11 @@ export async function genererIllustrations(
   dossierImages: string
 ): Promise<ImageScene[]> {
   const suffixe = suffixeDeStyle(params);
-  const suffixeCouleur = params.couleur ? "" : ", black and white only, monochrome";
+  // Couleur ACTIVE : si demandée, on réclame explicitement des couleurs (sinon
+  // les styles « croquis/encre » rendent presque toujours en noir et blanc).
+  const suffixeCouleur = params.couleur
+    ? ", colored illustration, soft natural colors, gentle watercolor and colored-pencil fills over the line art, hand-coloured look"
+    : ", black and white, monochrome line art, no color";
   const ratio = aspectRatio(params);
 
   console.log(
