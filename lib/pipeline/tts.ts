@@ -17,6 +17,36 @@ const BASE_ELEVENLABS = "https://api.elevenlabs.io";
 const MODELE_TTS = process.env.ELEVENLABS_MODEL || "eleven_multilingual_v2";
 const FORMAT_SORTIE = "mp3_44100_128";
 
+// Nombre de synthèses simultanées. Les plans ElevenLabs limitent les requêtes
+// concurrentes (Starter = 3) : au-delà, l'API renvoie HTTP 429
+// (concurrent_limit_exceeded). On plafonne donc la parallélisation.
+const CONCURRENCE = Math.max(
+  1,
+  Number(process.env.ELEVENLABS_CONCURRENCE) || 3
+);
+
+/** Exécute `fn` sur chaque élément avec au plus `limite` tâches simultanées. */
+async function mapLimite<T, R>(
+  items: T[],
+  limite: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const resultats = new Array<R>(items.length);
+  let curseur = 0;
+  async function worker(): Promise<void> {
+    while (curseur < items.length) {
+      const i = curseur++;
+      resultats[i] = await fn(items[i], i);
+    }
+  }
+  const travailleurs = Array.from(
+    { length: Math.min(limite, items.length) },
+    () => worker()
+  );
+  await Promise.all(travailleurs);
+  return resultats;
+}
+
 // Voix françaises natives (Voice Library, ajoutées au compte ElevenLabs).
 // Surcharger au besoin par variable d'environnement.
 const VOIX_AUDREY = process.env.ELEVENLABS_VOIX_FEMALE || "McVZB9hVxVSk3Equu8EH";
@@ -94,12 +124,14 @@ export async function genererVoixOff(
 
   console.log(
     `[pipeline:tts] Synthèse vocale ElevenLabs de ${storyboard.scenes.length} scènes ` +
-      `(voix=${voix}, modèle=${MODELE_TTS})…`
+      `(voix=${voix}, modèle=${MODELE_TTS}, concurrence=${CONCURRENCE})…`
   );
 
-  // Scènes en parallèle.
-  const resultats = await Promise.all(
-    storyboard.scenes.map(async (scene): Promise<AudioScene> => {
+  // Scènes en parallèle, mais plafonnées (limite de requêtes concurrentes).
+  const resultats = await mapLimite(
+    storyboard.scenes,
+    CONCURRENCE,
+    async (scene): Promise<AudioScene> => {
       const chemin = path.join(dossierAudio, `scene_${scene.numero}.mp3`);
       await synthetiserScene(
         scene.narration,
@@ -115,7 +147,7 @@ export async function genererVoixOff(
           `(${dureeReelle.toFixed(1)}s)`
       );
       return { numero: scene.numero, chemin, duree_reelle: dureeReelle };
-    })
+    }
   );
 
   return resultats.sort((a, b) => a.numero - b.numero);
