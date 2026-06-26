@@ -3,9 +3,10 @@
 // par chaque fournisseur (tokens OpenRouter, caractères ElevenLabs, nombre
 // d'images Flux-2, pistes Suno) × des tarifs unitaires configurables.
 //
-// Les tarifs sont des estimations indicatives (les fournisseurs facturent en
-// USD, souvent via crédits/abonnement) : surcharge-les par variables
-// d'environnement pour coller à ta facturation réelle.
+// Tarifs calés sur le réel (juin 2026) : prix du modèle OpenRouter (API),
+// crédits Kie mesurés (5 crédits/image Flux-2, 12 crédits/musique Suno, à
+// 0,005 $/crédit), abonnement ElevenLabs Starter (5 $ / 40 000 car.).
+// Surcharge-les par variables d'environnement si ta facturation évolue.
 
 import type { CoutVideo, PosteCout } from "@/lib/types";
 
@@ -24,12 +25,13 @@ const TAUX_USD_EUR = envNombre("COUT_TAUX_USD_EUR", 0.92);
 const OPENROUTER_INPUT_USD_M = envNombre("COUT_OPENROUTER_INPUT_USD_M", 3);
 const OPENROUTER_OUTPUT_USD_M = envNombre("COUT_OPENROUTER_OUTPUT_USD_M", 15);
 
-// ElevenLabs (voix off) — USD pour 1000 caractères synthétisés.
-const ELEVENLABS_USD_1K = envNombre("COUT_ELEVENLABS_USD_1K_CHARS", 0.15);
+// ElevenLabs (voix off) — USD pour 1000 caractères (Starter : 5 $ / 40 000 car.).
+const ELEVENLABS_USD_1K = envNombre("COUT_ELEVENLABS_USD_1K_CHARS", 0.125);
 
-// Kie.ai — USD par image Flux-2 et par piste de musique Suno.
-const IMAGE_USD = envNombre("COUT_IMAGE_USD", 0.04);
-const MUSIQUE_USD = envNombre("COUT_MUSIQUE_USD", 0.08);
+// Kie.ai — USD par image Flux-2 (5 crédits) et par musique Suno (12 crédits),
+// à 0,005 $/crédit.
+const IMAGE_USD = envNombre("COUT_IMAGE_USD", 0.025);
+const MUSIQUE_USD = envNombre("COUT_MUSIQUE_USD", 0.06);
 
 export interface QuantitesCout {
   /** Tokens d'entrée OpenRouter (prompt). */
