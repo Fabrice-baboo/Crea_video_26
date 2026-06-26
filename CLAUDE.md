@@ -1,0 +1,75 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+CréaVidéo — a French-language Next.js 14 (App Router) UI for generating AI explainer ("whiteboard") videos. The entire interface, codebase identifiers, and types are written in French.
+
+It supports **three interchangeable generation engines**, selected at runtime from environment variables:
+1. **Custom pipeline** (the main engine) — fully in-house, no third-party video API. Builds the video from scratch: **OpenRouter** (Claude) for the script/storyboard, **ElevenLabs** (direct API) for the voice-over, **Kie.ai** for the illustrations (Flux-2) and background music (Suno), then **ffmpeg** to assemble everything into an MP4.
+2. **Golpo AI** ([video.golpoai.com](https://video.golpoai.com) API v2) — the original external engine, kept as a fallback.
+3. **Mock** — local simulation, no API keys needed (the default).
+
+## Commands
+
+```bash
+npm run dev      # dev server at http://localhost:3000
+npm run build    # production build
+npm run start    # serve production build
+npm run lint     # next lint (eslint-config-next)
+```
+
+There is no test suite. The `@/*` path alias maps to the repo root (see `tsconfig.json`). The custom pipeline requires **ffmpeg installed on the host** (`brew install ffmpeg` on macOS); the assembly step fails with an explicit French message otherwise.
+
+## Engine selection (the single most important concept)
+
+`app/api/generate/route.ts` → `choisirMoteur()` picks the engine on each request, in this order:
+
+1. **`golpo`** — if `GOLPO_API_KEY` is set **and** `NEXT_PUBLIC_MOCK_MODE === "false"`. Delegates to `lib/golpo.ts` (`x-api-key` auth).
+2. **`pipeline`** — else if `OPENROUTER_API_KEY` **and** `KIE_API_KEY` are both set. Runs the custom pipeline.
+3. **`mock`** — otherwise. `lib/golpo.ts` short-circuits `genererVideo`/`obtenirStatut` to `mockGenerer`/`mockStatut`: a ~15s in-memory simulation (`mockJobs` Map, lost on restart) returning sample MP4s and synthesized progress. This is the **default** with no keys configured.
+
+When editing generation/status logic, keep all three paths working. Mock and Golpo share `lib/golpo.ts`; the pipeline is independent.
+
+### Custom pipeline runs in the background
+
+Unlike Golpo (which returns an external `job_id` to poll), the pipeline takes 30–90s and runs **in-process, detached**. `route.ts` creates a job in the shared in-memory store, fires `genererVideoPipeline` without awaiting (`lancerGenerationFond`), and returns the `job_id` immediately. Progress is written to `lib/pipeline/jobs.ts` (a `Map` pinned to `globalThis` to survive dev HMR). `GET /api/status/[jobId]` checks this store **first**, then falls back to Golpo/mock. Pipeline job ids are prefixed `pipe-job-`.
+
+## Architecture
+
+The flow is: **VideoForm → POST /api/generate → returns job_id → StatusPoller polls GET /api/status/[jobId] every 2s → renders VideoCard when `statut === "termine"`**.
+
+- `lib/types.ts` — all shared types, the source of truth. Note the **French domain types** (`ParamsGeneration`, `ReponseStatut`, `StatutJob` with values `en_attente`/`en_cours`/`termine`/`erreur`) which are distinct from Golpo's English API contract.
+- `lib/golpo.ts` — Golpo + mock. `buildGolpoPayload` maps French `ParamsGeneration` → Golpo's snake_case English fields; `mapStatutGolpo` maps Golpo statuses back to French `StatutJob`. Engine-specific style fields (`canvas_style_variant` vs `sketch_style_variant`) are chosen by `params.moteur`.
+- `app/api/*` — thin route handlers returning French-keyed error JSON (`{ erreur }`). `generate` selects the engine; `status/[jobId]` reads the pipeline store then Golpo/mock; `video/[jobId]` streams the local MP4 (with HTTP Range support) when Supabase isn't configured; `extraire-document` accepts a multipart upload (PDF/`.docx`/`.doc`/`.txt`/`.md`) and returns the extracted text via `lib/extraction.ts` (pdf-parse v2 / mammoth / word-extractor, capped at 20 000 chars).
+- **Reference document** (`reference_document`/`reference_nom` in `ParamsGeneration`): the form uploads a file to `extraire-document`, stores the returned text, and the pipeline `script.ts` injects it into the prompt as source material to follow faithfully (distinct from `script_personnalise`, which is verbatim narration). Golpo appends it to the prompt (no dedicated field).
+- `components/StatusPoller.tsx` — client component, polls every `INTERVALLE_MS` (2000ms), stops on `termine`/`erreur`.
+
+Any new generation parameter must be threaded through `types.ts`, **both** `buildGolpoPayload` (Golpo) and the relevant `lib/pipeline/*` module (custom engine), and the form.
+
+### Custom pipeline (`lib/pipeline/`)
+
+Orchestrated by `index.ts` → `genererVideoPipeline(jobId, params, onProgression)`, which reports progress through fixed ranges: storyboard 0–10% → voice-over 10–40% → illustrations 40–75% → assembly 75–95% → upload/cleanup 95–100%. Music generation is kicked off in parallel right after the storyboard to hide its latency, and awaited just before assembly.
+
+- `script.ts` — **OpenRouter** (OpenAI SDK with a custom `baseURL`), model `anthropic/claude-sonnet-4.6` (env `OPENROUTER_MODEL`). Forces JSON via `response_format: json_schema` (strict) → `Storyboard`.
+- `tts.ts` — **ElevenLabs direct** voice-over (`POST /v1/text-to-speech/{voice_id}`, model `eleven_multilingual_v2`, env `ELEVENLABS_API_KEY`), one MP3 per scene (parallel). Calls ElevenLabs directly — **not** via Kie — so it can use **native French Voice Library voices** (Kie's TTS only allows English default voices). **Requires a paid ElevenLabs plan**: free tier cannot use Library voices via API. The 4 form voices map to French voice IDs (1 female Audrey + 2 male Nicolas/Léo, since the free tier capped Library voices at 3 slots), overridable via `ELEVENLABS_VOIX_FEMALE`/`_FEMALE_4`/`_MALE_3`/`_MALE_4`.
+- `illustrations.ts` — **Kie.ai → Flux-2** one PNG per scene (parallel). English prompt + per-style suffix; aspect ratio from `params.orientation`.
+- `suno.ts` — **Kie.ai → Suno** instrumental background track. **Non-blocking**: on failure it returns `null` and assembly proceeds without music. Uses Suno's *legacy* endpoints (`/api/v1/generate` + `/api/v1/generate/record-info`), distinct from the unified `/api/v1/jobs/*` pattern.
+- `kie.ts` — shared Kie.ai client for the **unified async pattern** (now used by illustrations only): `createTask` → poll `recordInfo` until `success` → `resultUrls`, plus a download helper (Kie URLs expire fast, so files are fetched immediately).
+- `assemblage.ts` — **fluent-ffmpeg**: one clip per scene (still image for the real audio duration), chained with `xfade`/`acrossfade` (0.3s), optional music mixed at 15%, then optional **Supabase Storage** upload (bucket `videos`) — falling back to the local `/api/video/[jobId]` URL.
+- `jobs.ts` (progress store), `util.ts` (tmp dirs under `os.tmpdir()/crea-video/{jobId}`, audio duration via `music-metadata`, cleanup), `types.ts` (internal `Storyboard`/`Scene`/`ClipScene`, distinct from the shared UI types).
+
+Pages: `app/page.tsx` (accueil), `app/playground/page.tsx` (generator), `app/galerie/page.tsx` (gallery). There is **no DB persistence** — generated videos aren't catalogued (Supabase Storage only holds the finished MP4 when configured).
+
+## Conventions
+
+- Keep all user-facing strings, log messages, and new domain identifiers in **French**, matching existing code. **Exception:** prompts sent to the image model (`description_visuelle`, style suffixes) are written in **English** for quality.
+- Styling is Tailwind with a dark palette (`slate-900`/`slate-800`); icons from `lucide-react`.
+- The custom-engine SDKs are externalized from the bundle in `next.config.js` (`serverComponentsExternalPackages`); the pipeline routes set `export const runtime = "nodejs"`.
+
+## Environment variables
+
+See `.env.example`. Custom pipeline: `OPENROUTER_API_KEY` (+ optional `OPENROUTER_MODEL`, `OPENROUTER_SITE_URL`), `ELEVENLABS_API_KEY` (voice-over — **paid plan required** for French Library voices; + optional `ELEVENLABS_MODEL`, `ELEVENLABS_VOIX_*` voice ids), `KIE_API_KEY` (images + music — + optional `KIE_IMAGE_MODEL`, `KIE_SUNO_MODEL`), optional `SUPABASE_URL` / `SUPABASE_SERVICE_KEY`, optional `FFMPEG_PATH` / `FFPROBE_PATH`. Golpo: `GOLPO_API_KEY` + `NEXT_PUBLIC_MOCK_MODE=false`.
+
+> **Note:** the pipeline activates (`choisirMoteur`) on `OPENROUTER_API_KEY` + `KIE_API_KEY` only; `ELEVENLABS_API_KEY` is read at the voice-over step (`tts.ts`), which throws an explicit French error if it's missing. `KIE_TTS_MODEL`/`KIE_VOIX_*` are **no longer used** (TTS moved off Kie).

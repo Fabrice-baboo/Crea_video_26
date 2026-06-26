@@ -1,0 +1,95 @@
+// ─── Types partagés ───────────────────────────────────────────────────────────
+
+export type Moteur = "golpo_canvas" | "golpo_sketch";
+
+export type StyleCanvas =
+  | "whiteboard"
+  | "neon"
+  | "chalkboard"
+  | "modern_minimal"
+  | "playful"
+  | "technical"
+  | "editorial"
+  | "marker"
+  | "illustrations"
+  | "chalkboard_black_on_white";
+
+export type StyleSketch =
+  | "classic"
+  | "improved"
+  | "advanced"
+  | "creative"
+  | "infographics"
+  | "chalkboard_black_on_white";
+
+export type VoixNarration =
+  | "solo-female-3"
+  | "solo-female-4"
+  | "solo-male-3"
+  | "solo-male-4";
+
+export type MusiqueAmbiante =
+  | "none"
+  | "jazz"
+  | "lofi"
+  | "dramatic"
+  | "engaging"
+  | "hyper"
+  | "inspirational"
+  | "documentary";
+
+export type Orientation = "landscape" | "portrait";
+export type Rythme = "normal" | "fast";
+export type StyleStylet = "stylus" | "marker" | "pen";
+
+export interface ParamsGeneration {
+  prompt: string;
+  script_personnalise?: string;
+  /** Texte extrait d'un document de référence (PDF/Word) à suivre fidèlement. */
+  reference_document?: string;
+  /** Nom du fichier de référence importé (affichage uniquement). */
+  reference_nom?: string;
+  moteur: Moteur;
+  style_canvas?: StyleCanvas;
+  style_sketch?: StyleSketch;
+  voix: VoixNarration;
+  langue_narration: string;
+  couleur: boolean;
+  musique: MusiqueAmbiante;
+  orientation: Orientation;
+  rythme: Rythme;
+  style_stylet: StyleStylet;
+}
+
+export type StatutJob =
+  | "en_attente"
+  | "en_cours"
+  | "termine"
+  | "erreur";
+
+export interface Video {
+  id: string;
+  titre: string;
+  prompt: string;
+  statut: StatutJob;
+  url_video?: string;
+  url_miniature?: string;
+  duree_secondes?: number;
+  cree_le: string;
+  parametres: ParamsGeneration;
+}
+
+export interface ReponseGeneration {
+  job_id: string;
+  video_id: string;
+  message: string;
+}
+
+export interface ReponseStatut {
+  job_id: string;
+  video_id: string;
+  statut: StatutJob;
+  progression: number; // 0-100
+  video?: Video;
+  message?: string;
+}
