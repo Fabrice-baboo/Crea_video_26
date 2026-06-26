@@ -1,7 +1,7 @@
 // ─── Store mémoire des jobs du pipeline custom ────────────────────────────────
 // Partagé entre /api/generate (écriture) et /api/status (lecture).
 // La génération custom est longue (30-90s) : on la lance en arrière-plan et on
-// suit la progression ici. Perdu au redémarrage serveur (comme le mock Golpo).
+// suit la progression ici. Perdu au redémarrage serveur (comme le mock).
 //
 // Attaché à globalThis pour survivre au Hot Module Reload de Next en dev.
 

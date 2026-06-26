@@ -21,7 +21,7 @@ const VIDEOS_DEMO: Video[] = [
     cree_le: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     parametres: {
       prompt: "Explique le fonctionnement de l'intelligence artificielle générative",
-      moteur: "golpo_canvas",
+      style_rendu: "canvas",
       style_canvas: "whiteboard",
       voix: "solo-female-3",
       langue_narration: "french",
@@ -44,7 +44,7 @@ const VIDEOS_DEMO: Video[] = [
     cree_le: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     parametres: {
       prompt: "Changement climatique causes et conséquences",
-      moteur: "golpo_sketch",
+      style_rendu: "sketch",
       style_sketch: "advanced",
       voix: "solo-male-3",
       langue_narration: "french",
@@ -67,7 +67,7 @@ const VIDEOS_DEMO: Video[] = [
     cree_le: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     parametres: {
       prompt: "Introduction au machine learning pour le grand public",
-      moteur: "golpo_canvas",
+      style_rendu: "canvas",
       style_canvas: "modern_minimal",
       voix: "solo-female-4",
       langue_narration: "french",
@@ -114,8 +114,7 @@ export default function GaleriePage() {
         <div className="mb-6 bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-sm text-slate-400">
           <strong className="text-slate-300">Galerie de démonstration</strong> — Ces vidéos sont
           des exemples. En production, cette page affichera les vidéos que tu as
-          générées, récupérées depuis l'API Golpo (
-          <code className="text-xs bg-slate-700 px-1 rounded">GET /api/v2/videos</code>).
+          générées par la pipeline custom.
         </div>
 
         {/* Grille */}

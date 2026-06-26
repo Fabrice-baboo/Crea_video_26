@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { obtenirStatut } from "@/lib/golpo";
+import { mockStatut } from "@/lib/mock";
 import { jobsPipeline } from "@/lib/pipeline/jobs";
 import type { ReponseStatut, Video } from "@/lib/types";
 
@@ -38,8 +38,8 @@ export async function GET(
       return NextResponse.json(reponse);
     }
 
-    // ── Sinon : statut Golpo réel ou mock (logique existante) ────────────────────
-    const statut = await obtenirStatut(params.jobId);
+    // ── Sinon : statut du moteur mock ───────────────────────────────────────────
+    const statut = mockStatut(params.jobId);
     return NextResponse.json(statut);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Erreur inconnue";

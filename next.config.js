@@ -12,14 +12,6 @@ const nextConfig = {
       "word-extractor",
     ],
   },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'video.golpoai.com',
-      },
-    ],
-  },
 };
 
 module.exports = nextConfig;

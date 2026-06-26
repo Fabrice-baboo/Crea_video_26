@@ -153,8 +153,8 @@ export default function HomePage() {
             Prêt à créer ta première vidéo ?
           </h2>
           <p className="text-slate-400 mb-8">
-            En mode mock, la génération est simulée localement. Ajoute ta clé
-            API Golpo pour des vidéos réelles.
+            En mode mock, la génération est simulée localement. Configure les
+            clés OpenRouter, ElevenLabs et Kie pour des vidéos réelles.
           </p>
           <Link
             href="/playground"
@@ -169,16 +169,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-slate-800 py-8 px-4 text-center">
         <p className="text-slate-500 text-sm">
-          CréaVidéo — Interface française pour{" "}
-          <a
-            href="https://video.golpoai.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 hover:underline"
-          >
-            Golpo AI
-          </a>
-          . Usage personnel.
+          CréaVidéo — Générateur de vidéos explicatives IA. Usage personnel.
         </p>
       </footer>
     </div>

@@ -1,6 +1,8 @@
 # CréaVidéo 🎬
 
-Interface française pour générer des vidéos explicatives IA via [Golpo AI](https://video.golpoai.com).
+Interface française (Next.js 14) pour générer des vidéos explicatives IA de type « tableau blanc ».
+
+La vidéo est construite de bout en bout par une **pipeline maison** : script (OpenRouter/Claude) → voix off (ElevenLabs) → illustrations (Kie/Flux-2) → musique (Kie/Suno) → assemblage (ffmpeg). Un **mode mock** local permet de tester l'interface sans aucune clé.
 
 ## Démarrage rapide
 
@@ -10,27 +12,23 @@ npm install
 
 # 2. Configurer les variables d'environnement
 cp .env.example .env.local
-# Édite .env.local si tu as une clé API Golpo
+# Renseigne tes clés (ou laisse vide pour le mode mock)
 
-# 3. Lancer en développement
+# 3. Installer ffmpeg (requis par la pipeline)
+brew install ffmpeg        # macOS
+
+# 4. Lancer en développement
 npm run dev
 ```
 
 Ouvre [http://localhost:3000](http://localhost:3000).
 
-## Mode mock vs API réelle
+## Mode mock vs pipeline réelle
 
-Par défaut, l'app tourne en **mode mock** — la génération est simulée localement (~15s) et retourne une vidéo de démonstration.
+- **Mock** (défaut sans clés, ou `NEXT_PUBLIC_MOCK_MODE=true`) — génération simulée localement (~15s), vidéo de démonstration.
+- **Pipeline custom** — activée dès que `OPENROUTER_API_KEY` **et** `KIE_API_KEY` sont définis. La voix off requiert en plus `ELEVENLABS_API_KEY` (**plan payant** pour les voix françaises natives). Génération réelle en 30–90s.
 
-Pour utiliser l'API Golpo réelle :
-
-1. Crée un compte sur [video.golpoai.com](https://video.golpoai.com) et obtiens une clé API
-2. Dans `.env.local`, renseigne :
-   ```
-   GOLPO_API_KEY=ta_cle_ici
-   NEXT_PUBLIC_MOCK_MODE=false
-   ```
-3. Redémarre le serveur
+Voir `.env.example` pour la liste complète des variables.
 
 ## Structure du projet
 
@@ -40,8 +38,10 @@ app/
   playground/       → Éditeur / générateur
   galerie/          → Galerie des vidéos
   api/
-    generate/       → POST → Golpo API (ou mock)
-    status/[jobId]/ → GET  → Polling du statut
+    generate/             → POST → pipeline custom (ou mock)
+    status/[jobId]/       → GET  → polling du statut
+    video/[jobId]/        → GET  → streaming du MP4 local
+    extraire-document/    → POST → extraction texte d'un PDF/Word
 
 components/
   NavBar.tsx        → Navigation
@@ -51,13 +51,16 @@ components/
 
 lib/
   types.ts          → Types TypeScript partagés
-  golpo.ts          → Client API Golpo + mock
+  mock.ts           → Moteur mock (simulation locale)
+  extraction.ts     → Extraction texte PDF/Word (pdf-parse, mammoth, word-extractor)
+  pipeline/         → Pipeline custom (script, tts, illustrations, suno, assemblage…)
 ```
 
 ## Fonctionnalités
 
 - Génération par prompt ou script personnalisé
-- 2 moteurs : Golpo Canvas (images) & Golpo Sketch (dessin)
+- **Import d'un document de référence** (PDF, .docx, .doc, .txt) que le script suit fidèlement
+- 2 types de rendu : Illustrations (canvas) & Croquis (sketch)
 - 10+ styles visuels
 - 4 voix IA (féminine/masculine)
 - Narration multi-langue (français, anglais, espagnol…)
@@ -69,7 +72,5 @@ lib/
 ## Prochaines étapes (roadmap perso)
 
 - [ ] Persistance des vidéos via Supabase
-- [ ] Upload de documents (PDF → vidéo)
 - [ ] Prévisualisation du script avant génération
 - [ ] Historique des générations (localStorage)
-- [ ] Pipeline custom avec Claude API (sans dépendance Golpo)

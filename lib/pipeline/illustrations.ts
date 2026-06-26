@@ -32,7 +32,7 @@ const SUFFIXE_STYLE: Record<StyleCanvas, string> = {
     ", detailed polished digital illustration, clean composition",
 };
 
-// Suffixe pour les styles sketch (moteur golpo_sketch).
+// Suffixe pour les styles sketch (rendu « sketch »).
 const SUFFIXE_SKETCH: Record<StyleSketch, string> = {
   classic: ", hand-drawn pencil sketch style, black and white line art, white background",
   improved: ", refined ink sketch style, clean line art, white background",
@@ -44,7 +44,7 @@ const SUFFIXE_SKETCH: Record<StyleSketch, string> = {
 };
 
 function suffixeDeStyle(params: ParamsGeneration): string {
-  if (params.moteur === "golpo_sketch") {
+  if (params.style_rendu === "sketch") {
     const s = params.style_sketch;
     if (s && SUFFIXE_SKETCH[s]) return SUFFIXE_SKETCH[s];
     return SUFFIXE_SKETCH.classic;

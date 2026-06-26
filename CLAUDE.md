@@ -6,10 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CréaVidéo — a French-language Next.js 14 (App Router) UI for generating AI explainer ("whiteboard") videos. The entire interface, codebase identifiers, and types are written in French.
 
-It supports **three interchangeable generation engines**, selected at runtime from environment variables:
+It supports **two interchangeable generation engines**, selected at runtime from environment variables:
 1. **Custom pipeline** (the main engine) — fully in-house, no third-party video API. Builds the video from scratch: **OpenRouter** (Claude) for the script/storyboard, **ElevenLabs** (direct API) for the voice-over, **Kie.ai** for the illustrations (Flux-2) and background music (Suno), then **ffmpeg** to assemble everything into an MP4.
-2. **Golpo AI** ([video.golpoai.com](https://video.golpoai.com) API v2) — the original external engine, kept as a fallback.
-3. **Mock** — local simulation, no API keys needed (the default).
+2. **Mock** — local simulation, no API keys needed. Used as the fallback when the pipeline keys are absent, or forced with `NEXT_PUBLIC_MOCK_MODE=true`.
+
+> A third engine, **Golpo AI**, was removed (see git history). The `golpo_canvas`/`golpo_sketch` engine values were renamed to the neutral `style_rendu` (`"canvas"`/`"sketch"`), which only selects the visual render style for the pipeline.
 
 ## Commands
 
@@ -26,27 +27,27 @@ There is no test suite. The `@/*` path alias maps to the repo root (see `tsconfi
 
 `app/api/generate/route.ts` → `choisirMoteur()` picks the engine on each request, in this order:
 
-1. **`golpo`** — if `GOLPO_API_KEY` is set **and** `NEXT_PUBLIC_MOCK_MODE === "false"`. Delegates to `lib/golpo.ts` (`x-api-key` auth).
+1. **`mock`** — if `NEXT_PUBLIC_MOCK_MODE === "true"` (explicit override to test the UI without spending credits).
 2. **`pipeline`** — else if `OPENROUTER_API_KEY` **and** `KIE_API_KEY` are both set. Runs the custom pipeline.
-3. **`mock`** — otherwise. `lib/golpo.ts` short-circuits `genererVideo`/`obtenirStatut` to `mockGenerer`/`mockStatut`: a ~15s in-memory simulation (`mockJobs` Map, lost on restart) returning sample MP4s and synthesized progress. This is the **default** with no keys configured.
+3. **`mock`** — otherwise. `lib/mock.ts` exposes `mockGenerer`/`mockStatut`: a ~15s in-memory simulation (`mockJobs` Map, lost on restart) returning sample MP4s and synthesized progress. This is the **default** with no keys configured.
 
-When editing generation/status logic, keep all three paths working. Mock and Golpo share `lib/golpo.ts`; the pipeline is independent.
+When editing generation/status logic, keep both paths working. The mock lives in `lib/mock.ts`; the pipeline is independent.
 
 ### Custom pipeline runs in the background
 
-Unlike Golpo (which returns an external `job_id` to poll), the pipeline takes 30–90s and runs **in-process, detached**. `route.ts` creates a job in the shared in-memory store, fires `genererVideoPipeline` without awaiting (`lancerGenerationFond`), and returns the `job_id` immediately. Progress is written to `lib/pipeline/jobs.ts` (a `Map` pinned to `globalThis` to survive dev HMR). `GET /api/status/[jobId]` checks this store **first**, then falls back to Golpo/mock. Pipeline job ids are prefixed `pipe-job-`.
+The pipeline takes 30–90s and runs **in-process, detached**. `route.ts` creates a job in the shared in-memory store, fires `genererVideoPipeline` without awaiting (`lancerGenerationFond`), and returns the `job_id` immediately. Progress is written to `lib/pipeline/jobs.ts` (a `Map` pinned to `globalThis` to survive dev HMR). `GET /api/status/[jobId]` checks this store **first**, then falls back to the mock. Pipeline job ids are prefixed `pipe-job-`.
 
 ## Architecture
 
 The flow is: **VideoForm → POST /api/generate → returns job_id → StatusPoller polls GET /api/status/[jobId] every 2s → renders VideoCard when `statut === "termine"`**.
 
-- `lib/types.ts` — all shared types, the source of truth. Note the **French domain types** (`ParamsGeneration`, `ReponseStatut`, `StatutJob` with values `en_attente`/`en_cours`/`termine`/`erreur`) which are distinct from Golpo's English API contract.
-- `lib/golpo.ts` — Golpo + mock. `buildGolpoPayload` maps French `ParamsGeneration` → Golpo's snake_case English fields; `mapStatutGolpo` maps Golpo statuses back to French `StatutJob`. Engine-specific style fields (`canvas_style_variant` vs `sketch_style_variant`) are chosen by `params.moteur`.
-- `app/api/*` — thin route handlers returning French-keyed error JSON (`{ erreur }`). `generate` selects the engine; `status/[jobId]` reads the pipeline store then Golpo/mock; `video/[jobId]` streams the local MP4 (with HTTP Range support) when Supabase isn't configured; `extraire-document` accepts a multipart upload (PDF/`.docx`/`.doc`/`.txt`/`.md`) and returns the extracted text via `lib/extraction.ts` (pdf-parse v2 / mammoth / word-extractor, capped at 20 000 chars).
-- **Reference document** (`reference_document`/`reference_nom` in `ParamsGeneration`): the form uploads a file to `extraire-document`, stores the returned text, and the pipeline `script.ts` injects it into the prompt as source material to follow faithfully (distinct from `script_personnalise`, which is verbatim narration). Golpo appends it to the prompt (no dedicated field).
+- `lib/types.ts` — all shared types, the source of truth. Note the **French domain types** (`ParamsGeneration`, `ReponseStatut`, `StatutJob` with values `en_attente`/`en_cours`/`termine`/`erreur`). `style_rendu` (`StyleRendu` = `"canvas"`/`"sketch"`) selects which style set applies (`style_canvas` vs `style_sketch`).
+- `lib/mock.ts` — the mock engine. `mockGenerer`/`mockStatut`: a ~15s in-memory simulation (`mockJobs` Map) returning sample MP4s and synthesized progress.
+- `app/api/*` — thin route handlers returning French-keyed error JSON (`{ erreur }`). `generate` selects the engine; `status/[jobId]` reads the pipeline store then the mock; `video/[jobId]` streams the local MP4 (with HTTP Range support) when Supabase isn't configured; `extraire-document` accepts a multipart upload (PDF/`.docx`/`.doc`/`.txt`/`.md`) and returns the extracted text via `lib/extraction.ts` (pdf-parse v2 / mammoth / word-extractor, capped at 20 000 chars).
+- **Reference document** (`reference_document`/`reference_nom` in `ParamsGeneration`): the form uploads a file to `extraire-document`, stores the returned text, and the pipeline `script.ts` injects it into the prompt as source material to follow faithfully (distinct from `script_personnalise`, which is verbatim narration).
 - `components/StatusPoller.tsx` — client component, polls every `INTERVALLE_MS` (2000ms), stops on `termine`/`erreur`.
 
-Any new generation parameter must be threaded through `types.ts`, **both** `buildGolpoPayload` (Golpo) and the relevant `lib/pipeline/*` module (custom engine), and the form.
+Any new generation parameter must be threaded through `types.ts`, the relevant `lib/pipeline/*` module (custom engine), and the form.
 
 ### Custom pipeline (`lib/pipeline/`)
 
@@ -70,6 +71,6 @@ Pages: `app/page.tsx` (accueil), `app/playground/page.tsx` (generator), `app/gal
 
 ## Environment variables
 
-See `.env.example`. Custom pipeline: `OPENROUTER_API_KEY` (+ optional `OPENROUTER_MODEL`, `OPENROUTER_SITE_URL`), `ELEVENLABS_API_KEY` (voice-over — **paid plan required** for French Library voices; + optional `ELEVENLABS_MODEL`, `ELEVENLABS_VOIX_*` voice ids), `KIE_API_KEY` (images + music — + optional `KIE_IMAGE_MODEL`, `KIE_SUNO_MODEL`), optional `SUPABASE_URL` / `SUPABASE_SERVICE_KEY`, optional `FFMPEG_PATH` / `FFPROBE_PATH`. Golpo: `GOLPO_API_KEY` + `NEXT_PUBLIC_MOCK_MODE=false`.
+See `.env.example`. Custom pipeline: `OPENROUTER_API_KEY` (+ optional `OPENROUTER_MODEL`, `OPENROUTER_SITE_URL`), `ELEVENLABS_API_KEY` (voice-over — **paid plan required** for French Library voices; + optional `ELEVENLABS_MODEL`, `ELEVENLABS_VOIX_*` voice ids), `KIE_API_KEY` (images + music — + optional `KIE_IMAGE_MODEL`, `KIE_SUNO_MODEL`), optional `SUPABASE_URL` / `SUPABASE_SERVICE_KEY`, optional `FFMPEG_PATH` / `FFPROBE_PATH`. Mock: `NEXT_PUBLIC_MOCK_MODE=true` forces the local simulation.
 
 > **Note:** the pipeline activates (`choisirMoteur`) on `OPENROUTER_API_KEY` + `KIE_API_KEY` only; `ELEVENLABS_API_KEY` is read at the voice-over step (`tts.ts`), which throws an explicit French error if it's missing. `KIE_TTS_MODEL`/`KIE_VOIX_*` are **no longer used** (TTS moved off Kie).

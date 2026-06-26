@@ -77,16 +77,20 @@ export default function PlaygroundPage() {
           </p>
         </div>
 
-        {/* Bandeau mock */}
-        <div className="mb-6 flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-          <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-300">
-            <strong>Mode mock actif</strong> — La vidéo générée est une vidéo de
-            démonstration. Pour des vidéos réelles, ajoute ta clé API Golpo dans{" "}
-            <code className="bg-amber-500/20 px-1 rounded text-xs">.env.local</code>{" "}
-            et passe <code className="bg-amber-500/20 px-1 rounded text-xs">NEXT_PUBLIC_MOCK_MODE=false</code>.
-          </p>
-        </div>
+        {/* Bandeau mock — affiché uniquement si le mode mock est forcé */}
+        {process.env.NEXT_PUBLIC_MOCK_MODE === "true" && (
+          <div className="mb-6 flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+            <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-300">
+              <strong>Mode mock actif</strong> — La vidéo générée est une vidéo
+              de démonstration. Pour des vidéos réelles, configure les clés
+              OpenRouter / ElevenLabs / Kie dans{" "}
+              <code className="bg-amber-500/20 px-1 rounded text-xs">.env.local</code>{" "}
+              et passe{" "}
+              <code className="bg-amber-500/20 px-1 rounded text-xs">NEXT_PUBLIC_MOCK_MODE=false</code>.
+            </p>
+          </div>
+        )}
 
         {/* Erreur */}
         {erreur && (
@@ -108,7 +112,9 @@ export default function PlaygroundPage() {
               onErreur={handleErreur}
             />
             <p className="text-center text-xs text-slate-500">
-              Simulation : ~15 secondes en mode mock
+              {process.env.NEXT_PUBLIC_MOCK_MODE === "true"
+                ? "Simulation : ~15 secondes en mode mock"
+                : "Génération en cours : ~30 à 90 secondes"}
             </p>
           </div>
         )}

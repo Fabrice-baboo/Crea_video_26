@@ -1,9 +1,10 @@
 // ─── Orchestrateur du pipeline de génération custom ───────────────────────────
-// Enchaîne : script (Claude) → voix off (OpenAI TTS) → illustrations (DALL-E 3)
-// → assemblage (ffmpeg) → upload + nettoyage.
+// Enchaîne : script (OpenRouter/Claude) → voix off (ElevenLabs) → illustrations
+// (Kie/Flux-2) → assemblage (ffmpeg) → upload + nettoyage. Musique (Suno) en
+// parallèle.
 //
-// Remplace lib/golpo.ts pour le moteur custom. La progression est remontée via
-// le callback onProgression (branché sur le store mémoire des jobs).
+// La progression est remontée via le callback onProgression (branché sur le
+// store mémoire des jobs).
 
 import type { ParamsGeneration } from "@/lib/types";
 import type { ClipScene } from "./types";

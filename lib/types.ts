@@ -1,6 +1,9 @@
 // ─── Types partagés ───────────────────────────────────────────────────────────
 
-export type Moteur = "golpo_canvas" | "golpo_sketch";
+// Type de rendu visuel : illustrations stylisées ("canvas") ou croquis au
+// trait ("sketch"). Détermine quel jeu de styles s'applique (style_canvas vs
+// style_sketch) et les suffixes de prompt d'image de la pipeline.
+export type StyleRendu = "canvas" | "sketch";
 
 export type StyleCanvas =
   | "whiteboard"
@@ -49,7 +52,7 @@ export interface ParamsGeneration {
   reference_document?: string;
   /** Nom du fichier de référence importé (affichage uniquement). */
   reference_nom?: string;
-  moteur: Moteur;
+  style_rendu: StyleRendu;
   style_canvas?: StyleCanvas;
   style_sketch?: StyleSketch;
   voix: VoixNarration;

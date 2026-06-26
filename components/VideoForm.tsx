@@ -77,7 +77,7 @@ export default function VideoForm({ onSoumettre, chargement }: Props) {
   const [params, setParams] = useState<ParamsGeneration>({
     prompt: "",
     script_personnalise: "",
-    moteur: "golpo_canvas",
+    style_rendu: "canvas",
     style_canvas: "whiteboard",
     style_sketch: "classic",
     voix: "solo-female-3",
@@ -260,23 +260,23 @@ export default function VideoForm({ onSoumettre, chargement }: Props) {
         )}
       </div>
 
-      {/* Moteur */}
+      {/* Type de rendu */}
       <div>
         <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-3">
           <Palette className="w-4 h-4 text-blue-400" />
-          Moteur vidéo
+          Type de rendu
         </label>
         <div className="grid grid-cols-2 gap-3">
           {(
             [
               {
-                v: "golpo_canvas",
-                titre: "Golpo Canvas",
+                v: "canvas",
+                titre: "Illustrations",
                 desc: "Images stylisées IA",
               },
               {
-                v: "golpo_sketch",
-                titre: "Golpo Sketch",
+                v: "sketch",
+                titre: "Croquis",
                 desc: "Dessin ligne à ligne",
               },
             ] as const
@@ -284,9 +284,9 @@ export default function VideoForm({ onSoumettre, chargement }: Props) {
             <button
               key={v}
               type="button"
-              onClick={() => maj("moteur", v)}
+              onClick={() => maj("style_rendu", v)}
               className={`p-4 rounded-xl border-2 text-left transition-all ${
-                params.moteur === v
+                params.style_rendu === v
                   ? "border-blue-500 bg-blue-500/10"
                   : "border-slate-700 hover:border-slate-600"
               }`}
@@ -304,12 +304,12 @@ export default function VideoForm({ onSoumettre, chargement }: Props) {
           Style visuel
         </label>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {(params.moteur === "golpo_canvas"
+          {(params.style_rendu === "canvas"
             ? STYLES_CANVAS
             : STYLES_SKETCH
           ).map(({ valeur, label }) => {
             const champ =
-              params.moteur === "golpo_canvas" ? "style_canvas" : "style_sketch";
+              params.style_rendu === "canvas" ? "style_canvas" : "style_sketch";
             const actif = params[champ] === valeur;
             return (
               <button
