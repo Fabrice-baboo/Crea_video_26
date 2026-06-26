@@ -77,7 +77,7 @@ export default function VideoForm({ onSoumettre, chargement }: Props) {
   const [params, setParams] = useState<ParamsGeneration>({
     prompt: "",
     script_personnalise: "",
-    style_rendu: "canvas",
+    style_rendu: "sketch",
     style_canvas: "whiteboard",
     style_sketch: "classic",
     voix: "solo-female-3",
