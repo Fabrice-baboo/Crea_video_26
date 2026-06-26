@@ -44,6 +44,8 @@ export type MusiqueAmbiante =
 export type Orientation = "landscape" | "portrait";
 export type Rythme = "normal" | "fast";
 export type StyleStylet = "stylus" | "marker" | "pen";
+/** Fourchette de durée cible de la vidéo, en minutes. */
+export type DureeVideo = "1-2" | "2-3" | "4-8" | "8-12" | "12-20";
 
 export interface ParamsGeneration {
   prompt: string;
@@ -62,6 +64,8 @@ export interface ParamsGeneration {
   orientation: Orientation;
   rythme: Rythme;
   style_stylet: StyleStylet;
+  /** Fourchette de durée cible (minutes). Défaut : "1-2". */
+  duree?: DureeVideo;
 }
 
 export type StatutJob =

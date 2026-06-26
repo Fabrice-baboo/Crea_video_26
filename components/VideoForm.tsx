@@ -8,6 +8,7 @@ import {
   Mic,
   Music,
   Monitor,
+  Clock,
   Zap,
   Pen,
   ChevronDown,
@@ -73,6 +74,14 @@ const MUSIQUES = [
   { valeur: "documentary", label: "Documentaire" },
 ] as const;
 
+const DUREES = [
+  { valeur: "1-2", label: "1–2 min" },
+  { valeur: "2-3", label: "2–3 min" },
+  { valeur: "4-8", label: "4–8 min" },
+  { valeur: "8-12", label: "8–12 min" },
+  { valeur: "12-20", label: "12–20 min" },
+] as const;
+
 export default function VideoForm({ onSoumettre, chargement }: Props) {
   const [params, setParams] = useState<ParamsGeneration>({
     prompt: "",
@@ -87,6 +96,7 @@ export default function VideoForm({ onSoumettre, chargement }: Props) {
     orientation: "landscape",
     rythme: "normal",
     style_stylet: "stylus",
+    duree: "1-2",
   });
 
   const [avance, setAvance] = useState(false);
@@ -413,6 +423,63 @@ export default function VideoForm({ onSoumettre, chargement }: Props) {
         </div>
       </div>
 
+      {/* Format vidéo */}
+      <div>
+        <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-2">
+          <Monitor className="w-4 h-4 text-blue-400" />
+          Format vidéo
+        </label>
+        <div className="flex gap-2">
+          {(
+            [
+              { v: "landscape", l: "16:9 · Paysage" },
+              { v: "portrait", l: "9:16 · Portrait" },
+            ] as const
+          ).map(({ v, l }) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => maj("orientation", v)}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                params.orientation === v
+                  ? "bg-blue-600 text-white"
+                  : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+              }`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Durée de la vidéo */}
+      <div>
+        <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-2">
+          <Clock className="w-4 h-4 text-blue-400" />
+          Durée de la vidéo
+        </label>
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          {DUREES.map(({ valeur, label }) => (
+            <button
+              key={valeur}
+              type="button"
+              onClick={() => maj("duree", valeur)}
+              className={`py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                params.duree === valeur
+                  ? "bg-blue-600 text-white"
+                  : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-xs text-slate-500">
+          Les durées longues multiplient le nombre de scènes : génération et coût
+          augmentent en conséquence.
+        </p>
+      </div>
+
       {/* Options avancées */}
       <div>
         <button
@@ -429,36 +496,7 @@ export default function VideoForm({ onSoumettre, chargement }: Props) {
         </button>
 
         {avance && (
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
-            {/* Orientation */}
-            <div>
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-2">
-                <Monitor className="w-3.5 h-3.5" />
-                Orientation
-              </label>
-              <div className="flex gap-2">
-                {(
-                  [
-                    { v: "landscape", l: "Paysage" },
-                    { v: "portrait", l: "Portrait" },
-                  ] as const
-                ).map(({ v, l }) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => maj("orientation", v)}
-                    className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
-                      params.orientation === v
-                        ? "bg-blue-600 text-white"
-                        : "bg-slate-800 text-slate-400 hover:bg-slate-700"
-                    }`}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
-
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
             {/* Rythme */}
             <div>
               <label className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-2">

@@ -5,8 +5,30 @@
 // Passe par OpenRouter (passerelle compatible OpenAI). Doc : openrouter.ai/docs
 
 import OpenAI from "openai";
-import type { ParamsGeneration } from "@/lib/types";
+import type { DureeVideo, ParamsGeneration } from "@/lib/types";
 import type { Storyboard } from "./types";
+
+/** Cadrage du storyboard selon la durée cible choisie (minutes → secondes/scènes). */
+interface CadrageDuree {
+  secMin: number;
+  secMax: number;
+  scenesMin: number;
+  scenesMax: number;
+  /** Plafond de tokens de sortie (les longues vidéos = beaucoup de narration). */
+  maxTokens: number;
+}
+
+const CADRAGES: Record<DureeVideo, CadrageDuree> = {
+  "1-2": { secMin: 60, secMax: 120, scenesMin: 4, scenesMax: 8, maxTokens: 4096 },
+  "2-3": { secMin: 120, secMax: 180, scenesMin: 6, scenesMax: 11, maxTokens: 6144 },
+  "4-8": { secMin: 240, secMax: 480, scenesMin: 12, scenesMax: 22, maxTokens: 10240 },
+  "8-12": { secMin: 480, secMax: 720, scenesMin: 20, scenesMax: 32, maxTokens: 14336 },
+  "12-20": { secMin: 720, secMax: 1200, scenesMin: 30, scenesMax: 50, maxTokens: 16384 },
+};
+
+function cadragePour(duree: DureeVideo | undefined): CadrageDuree {
+  return CADRAGES[duree ?? "1-2"];
+}
 
 /** Storyboard + usage de tokens (pour l'estimation du coût). */
 export interface ResultatScript {
@@ -18,18 +40,20 @@ export interface ResultatScript {
 const BASE_URL = process.env.OPENROUTER_API_URL || "https://openrouter.ai/api/v1";
 const MODELE = process.env.OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6";
 
-const PROMPT_SYSTEME = `Tu es un expert en création de vidéos explicatives.
+function promptSysteme(c: CadrageDuree): string {
+  return `Tu es un expert en création de vidéos explicatives.
 
-À partir du sujet donné, génère un storyboard structuré pour une vidéo de 60 à 120 secondes.
+À partir du sujet donné, génère un storyboard structuré pour une vidéo de ${c.secMin} à ${c.secMax} secondes (soit environ ${Math.round(c.secMin / 60)} à ${Math.round(c.secMax / 60)} minutes).
 
 Contraintes :
-- Entre 4 et 8 scènes selon la complexité du sujet.
+- Entre ${c.scenesMin} et ${c.scenesMax} scènes selon la complexité du sujet ; vise une durée totale dans la fourchette demandée et développe le sujet en profondeur pour la remplir.
 - "narration" est le texte à lire par la voix off : phrases courtes, claires, dans la langue demandée.
 - "description_visuelle" est un prompt de génération d'image : il DOIT être rédigé en anglais, décrivant une illustration simple de type tableau blanc (whiteboard), un seul concept visuel par scène. NE DEMANDE AUCUN TEXTE dans l'image : pas de mots, d'étiquettes, de légendes ni de chiffres écrits (les modèles d'image rendent mal le texte et c'est la voix off qui porte les mots). Décris uniquement des éléments visuels (objets, pictogrammes, schémas sans libellés).
 - "duree_secondes" estime la durée de lecture de la narration (réaliste : ~2,5 mots/seconde).
 - "duree_estimee_secondes" est la somme des durées des scènes.
 
 Réponds UNIQUEMENT avec un objet JSON valide conforme au schéma, sans texte ni balises markdown.`;
+}
 
 // Schéma JSON strict imposé à OpenRouter (supporté par Claude Sonnet 4.5+).
 const SCHEMA_STORYBOARD = {
@@ -64,7 +88,11 @@ export async function genererStoryboard(
     throw new Error("Clé OPENROUTER_API_KEY manquante pour générer le script.");
   }
 
-  console.log(`[pipeline:script] Génération du storyboard via OpenRouter (${MODELE})…`);
+  const cadrage = cadragePour(params.duree);
+  console.log(
+    `[pipeline:script] Génération du storyboard via OpenRouter (${MODELE}) — ` +
+      `durée cible ${params.duree ?? "1-2"} min (${cadrage.secMin}–${cadrage.secMax}s, ${cadrage.scenesMin}–${cadrage.scenesMax} scènes)…`
+  );
   const client = new OpenAI({
     baseURL: BASE_URL,
     apiKey,
@@ -94,9 +122,9 @@ export async function genererStoryboard(
   try {
     const completion = await client.chat.completions.create({
       model: MODELE,
-      max_tokens: 4096,
+      max_tokens: cadrage.maxTokens,
       messages: [
-        { role: "system", content: PROMPT_SYSTEME },
+        { role: "system", content: promptSysteme(cadrage) },
         { role: "user", content: contenuUtilisateur },
       ],
       response_format: {
