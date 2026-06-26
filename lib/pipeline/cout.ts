@@ -33,6 +33,10 @@ const ELEVENLABS_USD_1K = envNombre("COUT_ELEVENLABS_USD_1K_CHARS", 0.125);
 const IMAGE_USD = envNombre("COUT_IMAGE_USD", 0.025);
 const MUSIQUE_USD = envNombre("COUT_MUSIQUE_USD", 0.06);
 
+// Animation image→vidéo (Grok Imagine) — USD par seconde de clip généré
+// (~3 crédits/s à 0,005 $/crédit).
+const ANIMATION_USD_PAR_S = envNombre("COUT_ANIMATION_USD_PAR_S", 0.015);
+
 export interface QuantitesCout {
   /** Tokens d'entrée OpenRouter (prompt). */
   tokensEntree: number;
@@ -42,6 +46,8 @@ export interface QuantitesCout {
   caracteresVoix: number;
   /** Nombre d'images Flux-2 générées. */
   nbImages: number;
+  /** Total des secondes de clips animés générés (0 si pas d'animation). */
+  secondesAnimation: number;
   /** Nombre de pistes de musique Suno générées (0 ou 1). */
   nbMusiques: number;
 }
@@ -55,6 +61,7 @@ export function calculerCout(q: QuantitesCout): CoutVideo {
     (q.tokensSortie / 1_000_000) * OPENROUTER_OUTPUT_USD_M;
   const voixUsd = (q.caracteresVoix / 1000) * ELEVENLABS_USD_1K;
   const imagesUsd = q.nbImages * IMAGE_USD;
+  const animationUsd = q.secondesAnimation * ANIMATION_USD_PAR_S;
   const musiqueUsd = q.nbMusiques * MUSIQUE_USD;
 
   const postes: PosteCout[] = [
@@ -66,6 +73,13 @@ export function calculerCout(q: QuantitesCout): CoutVideo {
       montant_eur: eur(imagesUsd),
     },
   ];
+  if (q.secondesAnimation > 0) {
+    postes.push({
+      libelle: "Animation (Grok)",
+      detail: `${q.secondesAnimation}s`,
+      montant_eur: eur(animationUsd),
+    });
+  }
   if (q.nbMusiques > 0) {
     postes.push({ libelle: "Musique (Suno)", montant_eur: eur(musiqueUsd) });
   }

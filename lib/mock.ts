@@ -16,6 +16,7 @@ const COUT_MOCK = calculerCout({
   tokensSortie: 450,
   caracteresVoix: 620,
   nbImages: 6,
+  secondesAnimation: 48,
   nbMusiques: 1,
 });
 

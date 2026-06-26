@@ -94,7 +94,8 @@ export async function genererIllustrations(
       console.log(
         `[pipeline:illustrations] Scène ${scene.numero} → ${path.basename(chemin)}`
       );
-      return { numero: scene.numero, chemin };
+      // On conserve l'URL Kie : elle sert d'entrée au modèle image→vidéo.
+      return { numero: scene.numero, chemin, url: urls[0] };
     })
   );
 

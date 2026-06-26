@@ -42,32 +42,48 @@ function lancerFfmpeg(commande: ffmpeg.FfmpegCommand, etape: string): Promise<vo
   });
 }
 
-/** Génère un clip MP4 (image fixe + audio) pour une scène. */
+/** Génère un clip MP4 (visuel + voix off) pour une scène, calé sur la durée audio.
+ *  Le visuel est soit un clip vidéo animé (chemin_video), soit une image fixe. */
 async function genererClip(
   clip: ClipScene,
   params: ParamsGeneration,
   cheminSortie: string
 ): Promise<void> {
   const { l, h } = resolution(params);
-  const vf = [
+  const dureeT = clip.duree_secondes.toFixed(3);
+  const anime = Boolean(clip.chemin_video);
+
+  // Pour une vidéo : on fige la dernière image si le clip est plus court que la
+  // narration (tpad), puis on recadre. Pour une image fixe : on la boucle.
+  const filtresVideo = [
+    ...(anime ? [`tpad=stop_mode=clone:stop_duration=${dureeT}`] : []),
     `scale=${l}:${h}:force_original_aspect_ratio=decrease`,
     `pad=${l}:${h}:(ow-iw)/2:(oh-ih)/2:color=white`,
     "setsar=1",
     "fps=25",
   ].join(",");
 
+  const cmd = ffmpeg();
+  if (anime) {
+    cmd.input(clip.chemin_video as string);
+  } else {
+    cmd.input(clip.chemin_image).inputOptions(["-loop 1"]);
+  }
+  cmd.input(clip.chemin_audio);
+
   await lancerFfmpeg(
-    ffmpeg()
-      .input(clip.chemin_image)
-      .inputOptions(["-loop 1"])
-      .input(clip.chemin_audio)
+    cmd
       .outputOptions([
+        // Vidéo depuis l'entrée 0, voix off depuis l'entrée 1 (on ignore l'audio
+        // éventuel du clip généré).
+        "-map 0:v:0",
+        "-map 1:a:0",
         "-c:v libx264",
-        `-t ${clip.duree_secondes.toFixed(3)}`,
+        `-t ${dureeT}`,
         "-pix_fmt yuv420p",
         "-c:a aac",
         "-b:a 192k",
-        `-vf ${vf}`,
+        `-vf ${filtresVideo}`,
         "-shortest",
       ])
       .output(cheminSortie),

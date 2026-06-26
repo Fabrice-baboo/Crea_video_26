@@ -114,7 +114,7 @@ export default function PlaygroundPage() {
             <p className="text-center text-xs text-slate-500">
               {process.env.NEXT_PUBLIC_MOCK_MODE === "true"
                 ? "Simulation : ~15 secondes en mode mock"
-                : "Génération en cours : ~30 à 90 secondes"}
+                : "Génération en cours : ~4 à 6 minutes (scènes animées)"}
             </p>
           </div>
         )}

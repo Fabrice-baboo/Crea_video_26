@@ -11,6 +11,7 @@ import type { ClipScene } from "./types";
 import { genererStoryboard } from "./script";
 import { genererVoixOff } from "./tts";
 import { genererIllustrations } from "./illustrations";
+import { genererAnimations } from "./animation";
 import { genererMusiqueFond } from "./suno";
 import { assemblerVideo } from "./assemblage";
 import { calculerCout } from "./cout";
@@ -46,26 +47,41 @@ export async function genererVideoPipeline(
   // latence ; on l'attendra juste avant le montage. Non bloquante (peut être null).
   const promesseMusique = genererMusiqueFond(params, base);
 
-  // 10-40 % — Voix off (toutes scènes en parallèle).
+  // 10-35 % — Voix off (toutes scènes en parallèle).
   onProgression(15, "Synthèse de la voix off…");
   const audios = await genererVoixOff(storyboard, params, audio);
-  onProgression(40, "Voix off générée.");
+  onProgression(35, "Voix off générée.");
 
-  // 40-75 % — Illustrations (toutes scènes en parallèle).
-  onProgression(45, "Création des illustrations…");
+  // 35-50 % — Illustrations (toutes scènes en parallèle).
+  onProgression(40, "Création des illustrations…");
   const illustrations = await genererIllustrations(storyboard, params, images);
-  onProgression(75, "Illustrations prêtes.");
+  onProgression(50, "Illustrations prêtes.");
 
-  // Appariement audio + image par numéro de scène.
+  // 50-80 % — Animation des scènes (image→vidéo, clips dans le même dossier).
+  onProgression(55, "Animation des scènes (vidéo)…");
+  const animations = await genererAnimations(
+    storyboard,
+    illustrations,
+    audios,
+    params,
+    images
+  );
+  const nbAnimees = animations.filter(Boolean).length;
+  onProgression(80, `Scènes animées (${nbAnimees}/${storyboard.scenes.length}).`);
+
+  // Appariement audio + visuel par numéro de scène (clip vidéo si animé, sinon
+  // image fixe en repli).
   const clips: ClipScene[] = storyboard.scenes.map((scene) => {
     const a = audios.find((x) => x.numero === scene.numero);
     const img = illustrations.find((x) => x.numero === scene.numero);
+    const anim = animations.find((x) => x && x.numero === scene.numero) || null;
     if (!a || !img) {
       throw new Error(`Données manquantes pour la scène ${scene.numero}.`);
     }
     return {
       numero: scene.numero,
       chemin_image: img.chemin,
+      chemin_video: anim?.chemin_video,
       chemin_audio: a.chemin,
       duree_secondes: a.duree_reelle,
     };
@@ -74,8 +90,8 @@ export async function genererVideoPipeline(
   // On récupère la musique de fond (lancée en parallèle plus haut).
   const cheminMusique = (await promesseMusique) ?? undefined;
 
-  // 75-95 % — Assemblage ffmpeg.
-  onProgression(80, "Montage de la vidéo…");
+  // 82-95 % — Assemblage ffmpeg.
+  onProgression(82, "Montage de la vidéo…");
   const { url } = await assemblerVideo(jobId, clips, params, base, cheminMusique);
   onProgression(95, "Finalisation…");
 
@@ -93,6 +109,10 @@ export async function genererVideoPipeline(
     tokensSortie: tokens_sortie,
     caracteresVoix: storyboard.scenes.reduce((acc, s) => acc + s.narration.length, 0),
     nbImages: illustrations.length,
+    secondesAnimation: animations.reduce(
+      (acc, a) => acc + (a?.secondes_facturees ?? 0),
+      0
+    ),
     nbMusiques: cheminMusique ? 1 : 0,
   });
 
