@@ -1,5 +1,8 @@
-// ─── Étape 3 — Illustrations (Kie.ai → Flux-2 Pro) ────────────────────────────
+// ─── Étape 3 — Illustrations (Kie.ai → Nano Banana 2) ─────────────────────────
 // Une image PNG par scène, prompt en anglais + suffixe de style.
+// Modèle par défaut : Nano Banana 2 (Gemini 3.1 Flash Image) — meilleure
+// cohérence inter-scènes et suivi du prompt que Flux-2 Pro. Changeable via
+// KIE_IMAGE_MODEL (ex. "flux-2/pro-text-to-image").
 
 import path from "path";
 import type { ParamsGeneration, StyleCanvas, StyleSketch } from "@/lib/types";
@@ -7,7 +10,7 @@ import type { Storyboard, ImageScene } from "./types";
 import { genererViaKie, telechargerFichier } from "./kie";
 
 const MODELE_IMAGE =
-  process.env.KIE_IMAGE_MODEL || "flux-2/pro-text-to-image";
+  process.env.KIE_IMAGE_MODEL || "nano-banana-2";
 
 // Consigne anti-texte : les modèles d'image impriment des libellés (souvent en
 // anglais et bafouillés) qui jurent avec une narration française. On bannit donc
@@ -91,7 +94,7 @@ export async function genererIllustrations(
       const chemin = path.join(dossierImages, `scene_${scene.numero}.png`);
       const urls = await genererViaKie(
         MODELE_IMAGE,
-        { prompt, aspect_ratio: ratio, resolution: "1K" },
+        { prompt, aspect_ratio: ratio, resolution: "1K", output_format: "png" },
         `image scène ${scene.numero}`
       );
       await telechargerFichier(urls[0], chemin);

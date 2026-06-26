@@ -28,9 +28,9 @@ const OPENROUTER_OUTPUT_USD_M = envNombre("COUT_OPENROUTER_OUTPUT_USD_M", 15);
 // ElevenLabs (voix off) — USD pour 1000 caractères (Starter : 5 $ / 40 000 car.).
 const ELEVENLABS_USD_1K = envNombre("COUT_ELEVENLABS_USD_1K_CHARS", 0.125);
 
-// Kie.ai — USD par image Flux-2 (5 crédits) et par musique Suno (12 crédits),
-// à 0,005 $/crédit.
-const IMAGE_USD = envNombre("COUT_IMAGE_USD", 0.025);
+// Kie.ai — USD par image (Nano Banana 2, 1K ≈ 0,04 $) et par musique Suno
+// (12 crédits ≈ 0,06 $), à 0,005 $/crédit. Surcharge via COUT_IMAGE_USD.
+const IMAGE_USD = envNombre("COUT_IMAGE_USD", 0.04);
 const MUSIQUE_USD = envNombre("COUT_MUSIQUE_USD", 0.06);
 
 // Animation image→vidéo (Grok Imagine) — USD par seconde de clip généré
@@ -44,7 +44,7 @@ export interface QuantitesCout {
   tokensSortie: number;
   /** Nombre total de caractères synthétisés par ElevenLabs. */
   caracteresVoix: number;
-  /** Nombre d'images Flux-2 générées. */
+  /** Nombre d'images générées (modèle Kie configuré, défaut Nano Banana 2). */
   nbImages: number;
   /** Total des secondes de clips animés générés (0 si pas d'animation). */
   secondesAnimation: number;
@@ -68,7 +68,7 @@ export function calculerCout(q: QuantitesCout): CoutVideo {
     { libelle: "Script (OpenRouter)", montant_eur: eur(scriptUsd) },
     { libelle: "Voix off (ElevenLabs)", montant_eur: eur(voixUsd) },
     {
-      libelle: "Images (Flux-2)",
+      libelle: "Images (Nano Banana 2)",
       detail: `×${q.nbImages}`,
       montant_eur: eur(imagesUsd),
     },
