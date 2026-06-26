@@ -5,7 +5,7 @@
 //
 // Attaché à globalThis pour survivre au Hot Module Reload de Next en dev.
 
-import type { ParamsGeneration, StatutJob } from "@/lib/types";
+import type { CoutVideo, ParamsGeneration, StatutJob } from "@/lib/types";
 
 export interface JobPipeline {
   job_id: string;
@@ -17,6 +17,7 @@ export interface JobPipeline {
   titre?: string;
   url_video?: string;
   duree_secondes?: number;
+  cout?: CoutVideo;
   erreur?: string;
   cree_le: string;
 }
@@ -62,7 +63,8 @@ export function terminerJob(
   jobId: string,
   urlVideo: string,
   titre: string,
-  dureeSecondes: number
+  dureeSecondes: number,
+  cout?: CoutVideo
 ): void {
   const job = jobsPipeline.get(jobId);
   if (!job) return;
@@ -72,6 +74,7 @@ export function terminerJob(
   job.url_video = urlVideo;
   job.titre = titre;
   job.duree_secondes = dureeSecondes;
+  job.cout = cout;
   jobsPipeline.set(jobId, job);
 }
 

@@ -70,6 +70,22 @@ export type StatutJob =
   | "termine"
   | "erreur";
 
+/** Un poste de coût (un fournisseur / une étape de la pipeline). */
+export interface PosteCout {
+  /** Libellé affiché, ex. "Script (OpenRouter)". */
+  libelle: string;
+  /** Détail facultatif de la quantité, ex. "×6" pour 6 images. */
+  detail?: string;
+  /** Coût estimé du poste, en euros. */
+  montant_eur: number;
+}
+
+/** Coût estimé d'une vidéo générée (estimation, hors taxes/abonnements). */
+export interface CoutVideo {
+  total_eur: number;
+  postes: PosteCout[];
+}
+
 export interface Video {
   id: string;
   titre: string;
@@ -80,6 +96,8 @@ export interface Video {
   duree_secondes?: number;
   cree_le: string;
   parametres: ParamsGeneration;
+  /** Coût estimé de la génération (pipeline custom uniquement). */
+  cout?: CoutVideo;
 }
 
 export interface ReponseGeneration {

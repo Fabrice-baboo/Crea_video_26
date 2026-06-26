@@ -8,12 +8,27 @@ import type {
   ReponseGeneration,
   ReponseStatut,
 } from "./types";
+import { calculerCout } from "./pipeline/cout";
+
+// Coût représentatif d'une vidéo (simulation) pour illustrer l'UI en mode mock.
+const COUT_MOCK = calculerCout({
+  tokensEntree: 2500,
+  tokensSortie: 450,
+  caracteresVoix: 620,
+  nbImages: 6,
+  nbMusiques: 1,
+});
 
 // Stockage en mémoire des jobs mock (réinitialisé au redémarrage serveur).
-const mockJobs = new Map<
-  string,
-  { startTime: number; params: ParamsGeneration }
->();
+// Épinglé sur globalThis pour être partagé entre les routes /api/generate et
+// /api/status (modules séparés en dev) et survivre au Hot Module Reload.
+type MockJob = { startTime: number; params: ParamsGeneration };
+const globalAvecMock = globalThis as typeof globalThis & {
+  __creaVideoMockJobs?: Map<string, MockJob>;
+};
+const mockJobs: Map<string, MockJob> =
+  globalAvecMock.__creaVideoMockJobs ??
+  (globalAvecMock.__creaVideoMockJobs = new Map());
 
 export function mockGenerer(params: ParamsGeneration): ReponseGeneration {
   const jobId = `mock-job-${Date.now()}`;
@@ -68,6 +83,7 @@ export function mockStatut(jobId: string): ReponseStatut {
       duree_secondes: 90,
       cree_le: new Date().toISOString(),
       parametres: job?.params ?? ({} as ParamsGeneration),
+      cout: COUT_MOCK,
     },
   };
 }

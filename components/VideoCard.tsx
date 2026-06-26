@@ -1,7 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Play, Download, X, Clock, Calendar } from "lucide-react";
+import {
+  Play,
+  Download,
+  X,
+  Clock,
+  Calendar,
+  Coins,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import type { Video } from "@/lib/types";
 
 interface Props {
@@ -13,6 +22,15 @@ function formatDuree(s?: number) {
   const m = Math.floor(s / 60);
   const sec = s % 60;
   return `${m}:${sec.toString().padStart(2, "0")}`;
+}
+
+function formatEur(montant: number) {
+  if (montant <= 0) return "0 €";
+  if (montant < 0.01) return "<0,01 €";
+  return new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: "EUR",
+  }).format(montant);
 }
 
 function formatDate(iso: string) {
@@ -27,6 +45,7 @@ function formatDate(iso: string) {
 
 export default function VideoCard({ video }: Props) {
   const [lecteurOuvert, setLecteurOuvert] = useState(false);
+  const [coutOuvert, setCoutOuvert] = useState(false);
 
   return (
     <>
@@ -72,6 +91,55 @@ export default function VideoCard({ video }: Props) {
           </h3>
 
           <p className="text-xs text-slate-500 line-clamp-2">{video.prompt}</p>
+
+          {/* Coût estimé */}
+          {video.cout && (
+            <div className="rounded-lg bg-slate-800/60 border border-slate-700/60">
+              <button
+                type="button"
+                onClick={() => setCoutOuvert((o) => !o)}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs"
+                title="Estimation indicative du coût de génération"
+              >
+                <span className="flex items-center gap-1.5 text-slate-300">
+                  <Coins className="w-3.5 h-3.5 text-amber-400" />
+                  Coût estimé
+                </span>
+                <span className="flex items-center gap-1 text-amber-300 font-semibold">
+                  ≈ {formatEur(video.cout.total_eur)}
+                  {coutOuvert ? (
+                    <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                  )}
+                </span>
+              </button>
+
+              {coutOuvert && (
+                <div className="px-3 pb-2 pt-0.5 space-y-1 border-t border-slate-700/60">
+                  {video.cout.postes.map((poste) => (
+                    <div
+                      key={poste.libelle}
+                      className="flex items-center justify-between text-xs text-slate-400"
+                    >
+                      <span>
+                        {poste.libelle}
+                        {poste.detail && (
+                          <span className="text-slate-500"> {poste.detail}</span>
+                        )}
+                      </span>
+                      <span className="font-mono text-slate-300">
+                        {formatEur(poste.montant_eur)}
+                      </span>
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-slate-500 pt-1">
+                    Estimation indicative (hors abonnements/taxes).
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center justify-between pt-1">
             <span className="flex items-center gap-1 text-xs text-slate-500">

@@ -24,6 +24,7 @@ export async function GET(
               duree_secondes: job.duree_secondes,
               cree_le: job.cree_le,
               parametres: job.params,
+              cout: job.cout,
             }
           : undefined;
 

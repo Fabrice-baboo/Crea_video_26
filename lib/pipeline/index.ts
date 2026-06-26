@@ -6,19 +6,21 @@
 // La progression est remontée via le callback onProgression (branché sur le
 // store mémoire des jobs).
 
-import type { ParamsGeneration } from "@/lib/types";
+import type { CoutVideo, ParamsGeneration } from "@/lib/types";
 import type { ClipScene } from "./types";
 import { genererStoryboard } from "./script";
 import { genererVoixOff } from "./tts";
 import { genererIllustrations } from "./illustrations";
 import { genererMusiqueFond } from "./suno";
 import { assemblerVideo } from "./assemblage";
+import { calculerCout } from "./cout";
 import { preparerDossiers, nettoyerJob } from "./util";
 
 export interface ResultatPipeline {
   url: string;
   titre: string;
   duree_secondes: number;
+  cout: CoutVideo;
 }
 
 /**
@@ -37,7 +39,7 @@ export async function genererVideoPipeline(
   const { base, audio, images } = await preparerDossiers(jobId);
 
   onProgression(5, "Génération du script et du storyboard…");
-  const storyboard = await genererStoryboard(params);
+  const { storyboard, tokens_entree, tokens_sortie } = await genererStoryboard(params);
   onProgression(10, `Storyboard prêt : ${storyboard.scenes.length} scènes.`);
 
   // Musique de fond (Suno) lancée en parallèle dès maintenant pour masquer sa
@@ -85,10 +87,23 @@ export async function genererVideoPipeline(
   }
   onProgression(100, "Vidéo prête !");
 
-  console.log(`[pipeline] === Job ${jobId} terminé (${dureeTotale.toFixed(0)}s) ===`);
+  // Estimation du coût à partir des quantités réellement consommées.
+  const cout = calculerCout({
+    tokensEntree: tokens_entree,
+    tokensSortie: tokens_sortie,
+    caracteresVoix: storyboard.scenes.reduce((acc, s) => acc + s.narration.length, 0),
+    nbImages: illustrations.length,
+    nbMusiques: cheminMusique ? 1 : 0,
+  });
+
+  console.log(
+    `[pipeline] === Job ${jobId} terminé (${dureeTotale.toFixed(0)}s, ` +
+      `coût estimé ≈ ${cout.total_eur.toFixed(3)} €) ===`
+  );
   return {
     url,
     titre: storyboard.titre,
     duree_secondes: Math.round(dureeTotale),
+    cout,
   };
 }

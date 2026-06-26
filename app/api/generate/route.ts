@@ -66,7 +66,7 @@ function lancerGenerationFond(jobId: string, params: ParamsGeneration): void {
     majProgression(jobId, pct, message);
   })
     .then((res) => {
-      terminerJob(jobId, res.url, res.titre, res.duree_secondes);
+      terminerJob(jobId, res.url, res.titre, res.duree_secondes, res.cout);
     })
     .catch((err: unknown) => {
       const message = err instanceof Error ? err.message : "Erreur de génération";

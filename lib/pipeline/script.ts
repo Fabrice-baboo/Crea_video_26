@@ -8,6 +8,13 @@ import OpenAI from "openai";
 import type { ParamsGeneration } from "@/lib/types";
 import type { Storyboard } from "./types";
 
+/** Storyboard + usage de tokens (pour l'estimation du coût). */
+export interface ResultatScript {
+  storyboard: Storyboard;
+  tokens_entree: number;
+  tokens_sortie: number;
+}
+
 const BASE_URL = process.env.OPENROUTER_API_URL || "https://openrouter.ai/api/v1";
 const MODELE = process.env.OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6";
 
@@ -51,7 +58,7 @@ const SCHEMA_STORYBOARD = {
 
 export async function genererStoryboard(
   params: ParamsGeneration
-): Promise<Storyboard> {
+): Promise<ResultatScript> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("Clé OPENROUTER_API_KEY manquante pour générer le script.");
@@ -82,6 +89,8 @@ export async function genererStoryboard(
     : promptUtilisateur;
 
   let texte: string;
+  let tokensEntree = 0;
+  let tokensSortie = 0;
   try {
     const completion = await client.chat.completions.create({
       model: MODELE,
@@ -96,6 +105,8 @@ export async function genererStoryboard(
       },
     });
     texte = completion.choices[0]?.message?.content ?? "";
+    tokensEntree = completion.usage?.prompt_tokens ?? 0;
+    tokensSortie = completion.usage?.completion_tokens ?? 0;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`Échec de l'appel OpenRouter (script) : ${msg}`);
@@ -103,9 +114,10 @@ export async function genererStoryboard(
 
   const storyboard = parserStoryboard(texte);
   console.log(
-    `[pipeline:script] Storyboard « ${storyboard.titre} » — ${storyboard.scenes.length} scènes, ~${storyboard.duree_estimee_secondes}s`
+    `[pipeline:script] Storyboard « ${storyboard.titre} » — ${storyboard.scenes.length} scènes, ~${storyboard.duree_estimee_secondes}s ` +
+      `(${tokensEntree}+${tokensSortie} tokens)`
   );
-  return storyboard;
+  return { storyboard, tokens_entree: tokensEntree, tokens_sortie: tokensSortie };
 }
 
 /** Parse + valide le JSON renvoyé par le modèle, avec messages d'erreur français. */
