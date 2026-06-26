@@ -9,6 +9,12 @@ import { genererViaKie, telechargerFichier } from "./kie";
 const MODELE_IMAGE =
   process.env.KIE_IMAGE_MODEL || "flux-2/pro-text-to-image";
 
+// Consigne anti-texte : les modèles d'image impriment des libellés (souvent en
+// anglais et bafouillés) qui jurent avec une narration française. On bannit donc
+// tout texte des illustrations : la voix off porte les mots.
+const SUFFIXE_SANS_TEXTE =
+  ", no text, no words, no letters, no labels, no captions, purely visual icons and illustrations";
+
 // Suffixe de style appliqué au prompt (en anglais), par style canvas.
 const SUFFIXE_STYLE: Record<StyleCanvas, string> = {
   whiteboard:
@@ -23,7 +29,7 @@ const SUFFIXE_STYLE: Record<StyleCanvas, string> = {
   playful:
     ", playful cartoon illustration, bright cheerful colors, rounded shapes",
   technical:
-    ", technical schematic diagram, precise line art, blueprint style, labeled",
+    ", technical schematic diagram, precise line art, blueprint style",
   editorial:
     ", editorial illustration, sophisticated, muted palette, magazine style",
   marker:
@@ -76,7 +82,7 @@ export async function genererIllustrations(
   // Scènes en parallèle pour réduire le temps total.
   const resultats = await Promise.all(
     storyboard.scenes.map(async (scene): Promise<ImageScene> => {
-      const prompt = `${scene.description_visuelle}${suffixe}${suffixeCouleur}`;
+      const prompt = `${scene.description_visuelle}${suffixe}${suffixeCouleur}${SUFFIXE_SANS_TEXTE}`;
       const chemin = path.join(dossierImages, `scene_${scene.numero}.png`);
       const urls = await genererViaKie(
         MODELE_IMAGE,

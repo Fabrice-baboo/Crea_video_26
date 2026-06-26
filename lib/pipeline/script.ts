@@ -25,7 +25,7 @@ const PROMPT_SYSTEME = `Tu es un expert en création de vidéos explicatives.
 Contraintes :
 - Entre 4 et 8 scènes selon la complexité du sujet.
 - "narration" est le texte à lire par la voix off : phrases courtes, claires, dans la langue demandée.
-- "description_visuelle" est un prompt de génération d'image : il DOIT être rédigé en anglais, décrivant une illustration simple de type tableau blanc (whiteboard), un seul concept visuel par scène.
+- "description_visuelle" est un prompt de génération d'image : il DOIT être rédigé en anglais, décrivant une illustration simple de type tableau blanc (whiteboard), un seul concept visuel par scène. NE DEMANDE AUCUN TEXTE dans l'image : pas de mots, d'étiquettes, de légendes ni de chiffres écrits (les modèles d'image rendent mal le texte et c'est la voix off qui porte les mots). Décris uniquement des éléments visuels (objets, pictogrammes, schémas sans libellés).
 - "duree_secondes" estime la durée de lecture de la narration (réaliste : ~2,5 mots/seconde).
 - "duree_estimee_secondes" est la somme des durées des scènes.
 
